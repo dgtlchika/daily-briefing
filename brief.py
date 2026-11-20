@@ -47,6 +47,7 @@ NETA_SYNONYMS = {
     "詐欺": ["フィッシング", "なりすまし", "偽サイト", "偽メール"],
 }
 NETA_MIN_SCORE = 3  # v1.5の5から緩和
+NETA_MIN_SCORE_BASE = 2  # v1.9.1: 基本キーワード自体が一致した候補の下限（同義語のみの一致は NETA_MIN_SCORE のまま）
 # v1.8: 「新しい材料」を示す語。これがあれば前日と同じ角度でも旗を立て直す
 NEW_MATERIAL_WORDS = ["続報", "更新", "判明", "拡大", "原因", "復旧", "再発", "追加", "新たに",
                       "公表", "謝罪", "対策", "提供開始", "修正", "被害額", "件数"]
@@ -133,9 +134,11 @@ def url_key(link):
 
 def neta_angle(title):
     for kw, angle in NETA_RULES:
-        if any(k in title for k in [kw] + NETA_SYNONYMS.get(kw, [])):
-            return angle
-    return None
+        if kw in title:
+            return angle, True
+        if any(k in title for k in NETA_SYNONYMS.get(kw, [])):
+            return angle, False
+    return None, False
 
 
 def load_history(today, out_dir):
@@ -725,15 +728,17 @@ def main():
         it["category"], it["score"] = cat, min(sc, 8) + it.get("score", 0)
         if any(w in it["title"] for w in PR_WORDS):
             it["score"] -= 4
-        ang = neta_angle(it["title"])
+        ang, ang_base = neta_angle(it["title"])
         if ang:
             it["neta_candidate"] = ang
+            it["neta_base"] = ang_base
     from collections import Counter as _C
     _used = _C()
     n_neta_suppressed = 0
     for it in sorted(items, key=lambda x: -x.get("score", 0)):
         ang = it.get("neta_candidate")
-        if ang and it.get("score", 0) >= NETA_MIN_SCORE and _used[ang] < 2:
+        _min = NETA_MIN_SCORE_BASE if it.get("neta_base") else NETA_MIN_SCORE
+        if ang and it.get("score", 0) >= _min and _used[ang] < 2:
             # v1.8: 同一角度＋語の重なり50%以上＋新しい材料なし → 2日目以降は旗を立てない
             tt = token_set(it["title"])
             if (not any(w in it["title"] for w in NEW_MATERIAL_WORDS)
