@@ -59,3 +59,8 @@ The full build history (v0 hand-made prototype → v1.7 designed template), incl
 ## License
 
 MIT
+
+## デジタル地下室の他のコンテンツ
+
+- note（目次）：https://note.com/sumaho_lab/n/n96ded41773ed
+- BOOTH（デジタル地下室のショップ）：https://digital-basement.booth.pm/
